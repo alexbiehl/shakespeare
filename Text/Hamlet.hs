@@ -63,6 +63,10 @@ import Control.Monad (mplus)
 import Data.Monoid (mempty, mappend, mconcat)
 import Control.Arrow ((***))
 import Data.List (intercalate)
+#if MIN_VERSION_bytestring(0,11,2)
+import qualified Data.Text.Encoding as TE
+import Text.Blaze.Internal (unsafeByteString)
+#endif
 
 import Data.IORef
 import qualified Data.Map as M
@@ -263,8 +267,13 @@ docToExp env hr v (DocContent c) = contentToExp env hr v c
 
 contentToExp :: Env -> HamletRules -> Scope -> Content -> Q Exp
 contentToExp _ hr _ (ContentRaw s) = do
+#if MIN_VERSION_bytestring(0,11,2)
+    os <- [|unsafeByteString|]
+    s' <- lift $ TE.encodeUtf8 (pack s)
+#else
     os <- [|preEscapedText . pack|]
     let s' = LitE $ StringL s
+#endif
     return $ hrFromHtml hr `AppE` (os `AppE` s')
 contentToExp _ hr scope (ContentVar d) = do
     str <- [|toHtml|]
